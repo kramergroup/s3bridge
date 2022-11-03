@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -15,10 +17,11 @@ import (
 )
 
 var (
-	s3bridge  bridge.S3Bridge // s3 bridge stuct
-	port      int             // listening port for service
-	loglevel  string
-	LOGLEVELS = []string{"DEBUG", "INFO", "WARN", "ERROR"}
+	s3bridge    bridge.S3Bridge // s3 bridge stuct
+	port        int             // listening port for service
+	presignport int             // listening port for presign service
+	loglevel    string
+	LOGLEVELS   = []string{"DEBUG", "INFO", "WARN", "ERROR"}
 )
 
 func main() {
@@ -30,7 +33,8 @@ func main() {
 	flag.StringVar(&s3bridge.Endpoint, "endpoint", util.LookupEnvOrString("ENDPOINT", ""), "s3 endpoint url")
 	flag.StringVar(&s3bridge.Region, "aws-region", util.LookupEnvOrString("AWS_REGION", "us-west-2"), "aws region")
 	flag.DurationVar(&s3bridge.ExpiryTime, "expiry-time", util.LookupEnvOrDuration("EXIRY_TIME", 2*time.Hour), "pre-signed url expiry time")
-	flag.IntVar(&port, "port", util.LookupEnvOrInt("PORT", 8080), "listening port for server")
+	flag.IntVar(&port, "port", util.LookupEnvOrInt("PORT", 80), "listening port for service")
+	flag.IntVar(&presignport, "presign-port", util.LookupEnvOrInt("PRESIGN-PORT", 8080), "listening port for presigned service")
 	flag.StringVar(&loglevel, "loglevel", util.LookupEnvOrString("LOGLEVEL", "INFO"), "log level (DEBUG, INFO, WARN, ERROR)")
 	flag.Parse()
 
@@ -56,22 +60,80 @@ func main() {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	// Creating the html endpoints
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	var wg sync.WaitGroup
 
-		u, err := s3bridge.GetRequestURL(r.URL.Path)
-		if err != nil {
-			log.Error(err)
-			http.NotFound(w, r)
-		} else {
-			http.Redirect(w, r, u.String(), http.StatusTemporaryRedirect)
+	// Start proxy presigning service
+	wg.Add(1)
+	go func() {
+
+		defer wg.Done()
+		mux := http.NewServeMux()
+		// Creating the html endpoints
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+			u, err := s3bridge.GetRequestURL(r.URL.Path)
+			if err != nil {
+				log.Error(err)
+				http.NotFound(w, r)
+			} else {
+				http.Redirect(w, r, u.String(), http.StatusTemporaryRedirect)
+			}
+
+		})
+
+		// Listen and serve
+		log.Debug("start listening on port ", port)
+		if err := http.ListenAndServe(":"+strconv.Itoa(presignport), mux); err != nil {
+			log.Fatal(err)
 		}
 
-	})
+	}()
 
-	// Listen and serve
-	log.Debug("start listening on port ", port)
-	if err := http.ListenAndServe(":"+strconv.Itoa(port), nil); err != nil {
-		log.Fatal(err)
-	}
+	wg.Add(1)
+	go func() {
+
+		defer wg.Done()
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+			name := strings.TrimLeft(r.URL.Path, "/")
+
+			// --------------------------------------------------------------
+			// This implementation reads entire objects and serves them. This
+			// can be quite resource intensive for large objects, because the
+			// entire object is read into memory before passing on
+
+			// ctx := r.Context()
+
+			// buf := manager.NewWriteAtBuffer([]byte{})
+			// if err := s3bridge.StreamObject(name, ctx, buf); err != nil {
+			// 	http.NotFound(w, r)
+			// } else {
+			// 	w.Write(buf.Bytes())
+			// }
+
+			// --------------------------------------------------------------
+			// This implementation exploits the range feature of HTTP2 requests, which
+			// allows to read only parts of an object at a time. This should reduce
+			// memory pressure substantially, because only parts of large objects
+			// are held in memory at a time
+			rs, err := s3bridge.ReadSeeker(name, r.Context())
+			if err != nil {
+				http.Error(w, "error accessing asset", http.StatusInternalServerError)
+			} else {
+				http.ServeContent(w, r, path.Base(name), time.Now(), rs)
+			}
+
+		})
+
+		// Listen and serve
+		log.Debug("start listening on port ", port)
+		if err := http.ListenAndServe(":"+strconv.Itoa(port), mux); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	wg.Wait()
+	log.Debug("finishing")
 }
