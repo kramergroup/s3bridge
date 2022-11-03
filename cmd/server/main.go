@@ -83,7 +83,7 @@ func main() {
 			})
 
 			// Listen and serve
-			log.Debug("start listening on port ", port)
+			log.Debug("pre-sign mode started listening on port ", port)
 			if err := http.ListenAndServe(":"+strconv.Itoa(presignport), mux); err != nil {
 				log.Fatal(err)
 			}
@@ -130,7 +130,7 @@ func main() {
 				})
 
 				// Listen and serve
-				log.Debug("start listening on port ", port)
+				log.Debug("proxy mode started listening on port ", port)
 				if err := http.ListenAndServe(":"+strconv.Itoa(port), mux); err != nil {
 					log.Fatal(err)
 				}
