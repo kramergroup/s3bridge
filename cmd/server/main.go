@@ -83,7 +83,7 @@ func main() {
 			})
 
 			// Listen and serve
-			log.Debug("pre-sign mode started listening on port ", port)
+			log.Debug("pre-sign mode started listening on port ", presignport)
 			if err := http.ListenAndServe(":"+strconv.Itoa(presignport), mux); err != nil {
 				log.Fatal(err)
 			}
@@ -100,6 +100,7 @@ func main() {
 				mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 					name := strings.TrimLeft(r.URL.Path, "/")
+					log.Info(r.Method + "Request : " + name + " from " + r.RemoteAddr)
 
 					// --------------------------------------------------------------
 					// This implementation reads entire objects and serves them. This
@@ -122,9 +123,11 @@ func main() {
 					// are held in memory at a time
 					rs, err := s3bridge.ReadSeeker(name, r.Context())
 					if err != nil {
+						log.Error(err)
 						http.Error(w, "error accessing asset", http.StatusInternalServerError)
 					} else {
 						http.ServeContent(w, r, path.Base(name), time.Now(), rs)
+						log.Info("Served asset : " + name + " to " + r.RemoteAddr)
 					}
 
 				})
