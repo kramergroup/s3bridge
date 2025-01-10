@@ -10,7 +10,7 @@ a powerfull IaC engine.
 
 ## Using esc environments
 
-Pulumi is configured to access config and secrets from ESC. You need to initialse this the first time
+Pulumi is configured to access config and secrets from [ESC](https://www.pulumi.com/docs/esc/). You need to initialse this the first time
 
 ```bash
 esc env init s3bridge/dev
