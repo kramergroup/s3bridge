@@ -22,7 +22,21 @@ export = async () => {
             externalHostname: "assets.kramer.science",
             path: "/compdes/video",
             allowedOrigins: [ "https://compdes.hsu-hh.info" ]
-        }
+        },
+        {
+            name: "matmod",
+            bucket: "teaching-matmod-video",
+            externalHostname: "assets.kramer.science",
+            path: "/matmod/video",
+            allowedOrigins: [ "https://matmod.hsu-hh.info" ]
+        },
+        {
+            name: "mapt",
+            bucket: "teaching-mapt-video",
+            externalHostname: "assets.kramer.science",
+            path: "/mapt/video",
+            allowedOrigins: [ "https://mapt.hsu-hh.info" ]
+        },
     ]
 
     const ns = new k8s.core.v1.Namespace(namespaceName, {
