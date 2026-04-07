@@ -1,5 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
-import * as vault from "@pulumi/vault";
+// import * as vault from "@pulumi/vault";
 import * as pulumi from "@pulumi/pulumi"
 import { S3Bridge } from './s3bridge'
 
@@ -11,9 +11,9 @@ export = async () => {
 
     const cephEndpoint = "http://hsuper-ceph.hsu-hh.de:8100"
 
-    const cephCredentials = await vault.generic.getSecret({
-        path: "kv/kube@iscc/s3bridge-ceph-credentials"
-    })
+    // const cephCredentials = await vault.generic.getSecret({
+    //     path: "kv/kube@iscc/s3bridge-ceph-credentials"
+    // })
 
     const backends = [
         {
@@ -37,6 +37,13 @@ export = async () => {
             path: "/mapt/video",
             allowedOrigins: [ "https://mapt.hsu-hh.info" ]
         },
+        {
+            name: "matsci",
+            bucket: "teaching-matsci-video",
+            externalHostname: "assets.kramer.science",
+            path: "/matsci/video",
+            allowedOrigins: [ "https://matsci.hsu-hh.info" ]
+        },
     ]
 
     const ns = new k8s.core.v1.Namespace(namespaceName, {
@@ -51,8 +58,8 @@ export = async () => {
             backend: {
                 endpoint: cephEndpoint,
                 bucket: backend.bucket,
-                s3_access_key: cephCredentials.data["s3_access_key"],
-                s3_secret_key: cephCredentials.data["s3_secret_key"],
+                s3_access_key: process.env["S3_ACCESS_KEY"] || "MISSING_ACCESS_KEY",
+                s3_secret_key: process.env["S3_SECRET_KEY"] || "MISSING_SECRET_KEY",
             },
             externalURL: {
                 host: backend.externalHostname,
