@@ -44,7 +44,7 @@ export class S3Bridge extends pulumi.ComponentResource {
               metadata: { labels: {...appLabels, "managed-by": "pulumi" } },
               spec: { containers: [{ 
                   name: "s3bridge", 
-                  image: "kramergroup/s3bridge",
+                  image: "kramergroup/s3bridge:2026-04-09",
                   ports: [
                       { name: "http", containerPort: 80 }
                   ],
