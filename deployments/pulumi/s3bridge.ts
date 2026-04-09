@@ -34,13 +34,14 @@ export class S3Bridge extends pulumi.ComponentResource {
     const deployment = new k8s.apps.v1.Deployment(name, {
       metadata: {
           namespace: args.namespace,
-          name: name
+          name: name,
+          labels: {...appLabels, "managed-by": "pulumi" }
       },
       spec: {
           selector: { matchLabels: appLabels },
           replicas: 1,
           template: {
-              metadata: { labels: appLabels },
+              metadata: { labels: {...appLabels, "managed-by": "pulumi" } },
               spec: { containers: [{ 
                   name: "s3bridge", 
                   image: "kramergroup/s3bridge",

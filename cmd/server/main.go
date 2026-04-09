@@ -38,6 +38,9 @@ func main() {
 	flag.StringVar(&loglevel, "loglevel", util.LookupEnvOrString("LOGLEVEL", "INFO"), "log level (DEBUG, INFO, WARN, ERROR)")
 	flag.Parse()
 
+	// log configuration
+	log.SetFormatter(&log.JSONFormatter{})
+
 	// validate config
 	if err := s3bridge.Validate(); err != nil {
 		log.Fatal(err)
