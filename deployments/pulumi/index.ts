@@ -3,6 +3,8 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi"
 import { S3Bridge } from './s3bridge'
 
+const config = new pulumi.Config();
+
 export = async () => {
 
     const appLabels = { app: "s3bridge" };
@@ -58,8 +60,8 @@ export = async () => {
             backend: {
                 endpoint: cephEndpoint,
                 bucket: backend.bucket,
-                s3_access_key: process.env["S3_ACCESS_KEY"] || "MISSING_ACCESS_KEY",
-                s3_secret_key: process.env["S3_SECRET_KEY"] || "MISSING_SECRET_KEY",
+                s3_access_key: config.get("S3_ACCESS_KEY") || "MISSING_ACCESS_KEY",
+                s3_secret_key: config.get("S3_SECRET_KEY") || "MISSING_SECRET_KEY",
             },
             externalURL: {
                 host: backend.externalHostname,

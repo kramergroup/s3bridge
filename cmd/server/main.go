@@ -103,7 +103,13 @@ func main() {
 				mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 					name := strings.TrimLeft(r.URL.Path, "/")
-					log.Info(r.Method + "Request : " + name + " from " + r.RemoteAddr)
+					log.WithFields(log.Fields{
+    					"asset": name,
+							"client": r.RemoteAddr,
+							"method": r.Method,
+							"status": http.StatusOK,
+							"event": "request_asset",
+  					}).Info(r.Method + "Request : " + name + " from " + r.RemoteAddr)
 
 					// --------------------------------------------------------------
 					// This implementation reads entire objects and serves them. This
@@ -130,7 +136,13 @@ func main() {
 						http.Error(w, "error accessing asset", http.StatusInternalServerError)
 					} else {
 						http.ServeContent(w, r, path.Base(name), time.Now(), rs)
-						log.Info("Served asset : " + name + " to " + r.RemoteAddr)
+						log.WithFields(log.Fields{
+    					"asset": name,
+							"client": r.RemoteAddr,
+							"method": r.Method,
+							"status": http.StatusOK,
+							"event": "served_asset",
+  					}).Info("Served asset : " + name + " to " + r.RemoteAddr)
 					}
 
 				})
